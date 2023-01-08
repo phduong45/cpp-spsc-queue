@@ -37,6 +37,35 @@ class BoundedQueue {
         return value;
     }
 
+    bool try_push(int value) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (size_ == data_.size()) {
+            return false;
+        }
+
+        data_[head_] = value;
+        head_ = (head_ + 1) % data_.size();
+        ++size_;
+
+        not_empty_.notify_one();
+
+        return true;
+    }
+
+    bool try_pop(int& value) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (size_ == 0) {
+            return false;
+        }
+
+        value = data_[tail_];
+        tail_ = (tail_ + 1) % data_.size();
+        --size_;
+
+        not_full_.notify_one();
+        return true;
+    }
+
   private:
     std::array<int, 4> data_{};
     std::size_t head_ = 0;
@@ -68,6 +97,22 @@ int main() {
 
     assert(sum == 55);
     std::cout << "bounded queue ok\n";
+
+    BoundedQueue try_queue;
+    int value = 0;
+    assert(!try_queue.try_pop(value));
+
+    assert(try_queue.try_push(1));
+    assert(try_queue.try_push(2));
+    assert(try_queue.try_push(3));
+    assert(try_queue.try_push(4));
+    assert(!try_queue.try_push(5));
+
+    assert(try_queue.try_pop(value));
+    assert(value == 1);
+
+    assert(try_queue.try_push(5));
+    std::cout << "try queue api ok\n";
 
     return 0;
 }
