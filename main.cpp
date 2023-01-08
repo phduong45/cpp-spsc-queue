@@ -11,28 +11,28 @@ class BoundedQueue {
     void push(int value) {
         {
             std::unique_lock<std::mutex> lock(mutex_);
-            cv_.wait(lock, [this] { return size_ < data_.size(); });
+            not_full_.wait(lock, [this] { return size_ < data_.size(); });
 
             data_[head_] = value;
             head_ = (head_ + 1) % data_.size();
             ++size_;
         }
 
-        cv_.notify_one();
+        not_empty_.notify_one();
     }
 
     int pop() {
         int value{0};
         {
             std::unique_lock<std::mutex> lock(mutex_);
-            cv_.wait(lock, [this] { return size_ > 0; });
+            not_empty_.wait(lock, [this] { return size_ > 0; });
 
             value = data_[tail_];
             tail_ = (tail_ + 1) % data_.size();
             --size_;
         }
 
-        cv_.notify_one();
+        not_full_.notify_one();
 
         return value;
     }
@@ -43,7 +43,8 @@ class BoundedQueue {
     std::size_t tail_ = 0;
     std::size_t size_ = 0;
     std::mutex mutex_;
-    std::condition_variable cv_;
+    std::condition_variable not_empty_;
+    std::condition_variable not_full_;
 };
 
 int main() {
