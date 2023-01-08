@@ -1,31 +1,35 @@
+#include <array>
 #include <cassert>
 #include <condition_variable>
+#include <cstddef>
 #include <iostream>
 #include <mutex>
 #include <thread>
 
-class OneSlotMailbox {
+class BoundedQueue {
   public:
-    void send(int value) {
+    void push(int value) {
         {
             std::unique_lock<std::mutex> lock(mutex_);
-            cv_.wait(lock, [this] { return !has_value_; });
+            cv_.wait(lock, [this] { return size_ < data_.size(); });
 
-            value_ = value;
-            has_value_ = true;
+            data_[head_] = value;
+            head_ = (head_ + 1) % data_.size();
+            ++size_;
         }
 
         cv_.notify_one();
     }
 
-    int receive() {
+    int pop() {
         int value{0};
         {
             std::unique_lock<std::mutex> lock(mutex_);
-            cv_.wait(lock, [this] { return has_value_; });
+            cv_.wait(lock, [this] { return size_ > 0; });
 
-            value = value_;
-            has_value_ = false;
+            value = data_[tail_];
+            tail_ = (tail_ + 1) % data_.size();
+            --size_;
         }
 
         cv_.notify_one();
@@ -34,31 +38,35 @@ class OneSlotMailbox {
     }
 
   private:
+    std::array<int, 4> data_{};
+    std::size_t head_ = 0;
+    std::size_t tail_ = 0;
+    std::size_t size_ = 0;
     std::mutex mutex_;
     std::condition_variable cv_;
-    int value_ = 0;
-    bool has_value_ = false;
 };
 
 int main() {
-    OneSlotMailbox mailbox;
-    int first = 0;
-    int second = 0;
+    BoundedQueue queue;
+    int sum = 0;
 
     std::thread producer([&] {
-        mailbox.send(10);
-        mailbox.send(20);
+        for (int value = 1; value <= 10; ++value) {
+            queue.push(value);
+        }
     });
 
     std::thread consumer([&] {
-        first = mailbox.receive();
-        second = mailbox.receive();
+        for (int i = 0; i < 10; ++i) {
+            sum += queue.pop();
+        }
     });
 
     producer.join();
     consumer.join();
 
-    assert(first == 10);
-    assert(second == 20);
-    std::cout << "one slot mailbox with backpressure ok\n";
+    assert(sum == 55);
+    std::cout << "bounded queue ok\n";
+
+    return 0;
 }
