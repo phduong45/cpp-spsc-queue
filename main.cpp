@@ -11,16 +11,13 @@ class BoundedQueue {
     bool push(int value) {
         {
             std::unique_lock<std::mutex> lock(mutex_);
-            not_full_.wait(lock,
-                           [this] { return size_ < data_.size() || closed_; });
+            not_full_.wait(lock, [this] { return !full() || closed_; });
 
             if (closed_) {
                 return false;
             }
 
-            data_[head_] = value;
-            head_ = (head_ + 1) % data_.size();
-            ++size_;
+            push_unchecked(value);
         }
 
         not_empty_.notify_one();
@@ -30,15 +27,13 @@ class BoundedQueue {
     bool pop(int& value) {
         {
             std::unique_lock<std::mutex> lock(mutex_);
-            not_empty_.wait(lock, [this] { return size_ > 0 || closed_; });
+            not_empty_.wait(lock, [this] { return !empty() || closed_; });
 
-            if (size_ == 0 && closed_) {
+            if (empty() && closed_) {
                 return false;
             }
 
-            value = data_[tail_];
-            tail_ = (tail_ + 1) % data_.size();
-            --size_;
+            value = pop_unchecked();
         }
 
         not_full_.notify_one();
@@ -47,14 +42,11 @@ class BoundedQueue {
 
     bool try_push(int value) {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (closed_ || size_ == data_.size()) {
+        if (closed_ || full()) {
             return false;
         }
 
-        data_[head_] = value;
-        head_ = (head_ + 1) % data_.size();
-        ++size_;
-
+        push_unchecked(value);
         not_empty_.notify_one();
 
         return true;
@@ -62,15 +54,13 @@ class BoundedQueue {
 
     bool try_pop(int& value) {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (size_ == 0) {
+        if (empty()) {
             return false;
         }
 
-        value = data_[tail_];
-        tail_ = (tail_ + 1) % data_.size();
-        --size_;
-
+        value = pop_unchecked();
         not_full_.notify_one();
+
         return true;
     }
 
@@ -82,6 +72,28 @@ class BoundedQueue {
 
         not_empty_.notify_all();
         not_full_.notify_all();
+    }
+
+  private:
+    bool empty() const {
+        return size_ == 0;
+    }
+
+    bool full() const {
+        return size_ == data_.size();
+    }
+
+    void push_unchecked(int value) {
+        data_[head_] = value;
+        head_ = (head_ + 1) % data_.size();
+        ++size_;
+    }
+
+    int pop_unchecked() {
+        int value = data_[tail_];
+        tail_ = (tail_ + 1) % data_.size();
+        --size_;
+        return value;
     }
 
   private:
