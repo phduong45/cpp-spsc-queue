@@ -4,11 +4,13 @@
 #include <cstddef>
 #include <iostream>
 #include <mutex>
+#include <string>
 #include <thread>
 
+template <typename T, std::size_t Capacity>
 class BoundedQueue {
   public:
-    bool push(int value) {
+    bool push(T value) {
         {
             std::unique_lock<std::mutex> lock(mutex_);
             not_full_.wait(lock, [this] { return !full() || closed_; });
@@ -24,7 +26,7 @@ class BoundedQueue {
         return true;
     }
 
-    bool pop(int& value) {
+    bool pop(T& value) {
         {
             std::unique_lock<std::mutex> lock(mutex_);
             not_empty_.wait(lock, [this] { return !empty() || closed_; });
@@ -40,7 +42,7 @@ class BoundedQueue {
         return true;
     }
 
-    bool try_push(int value) {
+    bool try_push(T value) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (closed_ || full()) {
             return false;
@@ -52,7 +54,7 @@ class BoundedQueue {
         return true;
     }
 
-    bool try_pop(int& value) {
+    bool try_pop(T& value) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (empty()) {
             return false;
@@ -83,20 +85,20 @@ class BoundedQueue {
         return size_ == data_.size();
     }
 
-    void push_unchecked(int value) {
+    void push_unchecked(T value) {
         data_[head_] = value;
         head_ = (head_ + 1) % data_.size();
         ++size_;
     }
 
-    int pop_unchecked() {
-        int value = data_[tail_];
+    T pop_unchecked() {
+        T value = data_[tail_];
         tail_ = (tail_ + 1) % data_.size();
         --size_;
         return value;
     }
 
-    std::array<int, 4> data_{};
+    std::array<T, Capacity> data_{};
     std::size_t head_ = 0;
     std::size_t tail_ = 0;
     std::size_t size_ = 0;
@@ -107,7 +109,7 @@ class BoundedQueue {
 };
 
 int main() {
-    BoundedQueue queue;
+    BoundedQueue<int, 4> queue;
     int sum = 0;
 
     std::thread producer([&] {
@@ -130,7 +132,7 @@ int main() {
     assert(sum == 55);
     std::cout << "bounded queue ok\n";
 
-    BoundedQueue try_queue;
+    BoundedQueue<int, 4> try_queue;
     int value = 0;
     assert(!try_queue.try_pop(value));
 
@@ -146,7 +148,7 @@ int main() {
     assert(try_queue.try_push(5));
     std::cout << "try queue api ok\n";
 
-    BoundedQueue close_queue;
+    BoundedQueue<int, 4> close_queue;
     assert(close_queue.push(1));
     assert(close_queue.push(2));
     close_queue.close();
@@ -163,6 +165,23 @@ int main() {
     assert(!close_queue.try_push(3));
 
     std::cout << "close queue ok\n";
+
+    BoundedQueue<std::string, 2> names;
+
+    assert(names.try_push("A"));
+    assert(names.try_push("B"));
+    assert(!names.try_push("C"));
+
+    std::string name;
+    assert(names.try_pop(name));
+    assert(name == "A");
+
+    assert(names.try_pop(name));
+    assert(name == "B");
+
+    assert(!names.try_pop(name));
+
+    std::cout << "string queue ok\n";
 
     return 0;
 }
