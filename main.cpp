@@ -6,6 +6,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <utility>
 
 template <typename T, std::size_t Capacity>
 class BoundedQueue {
@@ -19,7 +20,7 @@ class BoundedQueue {
                 return false;
             }
 
-            push_unchecked(value);
+            push_unchecked(std::move(value));
         }
 
         not_empty_.notify_one();
@@ -48,7 +49,7 @@ class BoundedQueue {
             return false;
         }
 
-        push_unchecked(value);
+        push_unchecked(std::move(value));
         not_empty_.notify_one();
 
         return true;
@@ -86,13 +87,13 @@ class BoundedQueue {
     }
 
     void push_unchecked(T value) {
-        data_[head_] = value;
+        data_[head_] = std::move(value);
         head_ = (head_ + 1) % data_.size();
         ++size_;
     }
 
     T pop_unchecked() {
-        T value = data_[tail_];
+        T value = std::move(data_[tail_]);
         tail_ = (tail_ + 1) % data_.size();
         --size_;
         return value;
@@ -182,6 +183,17 @@ int main() {
     assert(!names.try_pop(name));
 
     std::cout << "string queue ok\n";
+
+    BoundedQueue<std::string, 2> move_queue;
+
+    std::string original = "move-me";
+    assert(move_queue.try_push(std::move(original)));
+
+    std::string moved_out;
+    assert(move_queue.try_pop(moved_out));
+    assert(moved_out == "move-me");
+
+    std::cout << "move queue ok\n";
 
     return 0;
 }
