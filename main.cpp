@@ -10,7 +10,13 @@
 
 template <typename T, std::size_t Capacity>
 class BoundedQueue {
+    static_assert(Capacity > 0, "BoundedQueue capacity must be greater than 0");
+
   public:
+    static constexpr std::size_t capacity() {
+        return Capacity;
+    }
+
     bool push(T value) {
         {
             std::unique_lock<std::mutex> lock(mutex_);
@@ -110,6 +116,9 @@ class BoundedQueue {
 };
 
 int main() {
+    static_assert(BoundedQueue<int, 4>::capacity() == 4);
+    static_assert(BoundedQueue<std::string, 2>::capacity() == 2);
+
     BoundedQueue<int, 4> queue;
     int sum = 0;
 
