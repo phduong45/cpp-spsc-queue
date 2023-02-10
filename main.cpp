@@ -1,15 +1,16 @@
-
 #include "bounded_queue.h"
+
 #include <cassert>
 #include <iostream>
 #include <string>
 #include <thread>
+#include <utility>
 
 int main() {
-    static_assert(BoundedQueue<int, 4>::capacity() == 4);
-    static_assert(BoundedQueue<std::string, 2>::capacity() == 2);
+    static_assert(spsc::BoundedQueue<int, 4>::capacity() == 4);
+    static_assert(spsc::BoundedQueue<std::string, 2>::capacity() == 2);
 
-    BoundedQueue<int, 4> queue;
+    spsc::BoundedQueue<int, 4> queue;
     int sum = 0;
 
     std::thread producer([&] {
@@ -32,7 +33,7 @@ int main() {
     assert(sum == 55);
     std::cout << "bounded queue ok\n";
 
-    BoundedQueue<int, 4> try_queue;
+    spsc::BoundedQueue<int, 4> try_queue;
     int value = 0;
     assert(!try_queue.try_pop(value));
 
@@ -48,7 +49,7 @@ int main() {
     assert(try_queue.try_push(5));
     std::cout << "try queue api ok\n";
 
-    BoundedQueue<int, 4> close_queue;
+    spsc::BoundedQueue<int, 4> close_queue;
     assert(close_queue.push(1));
     assert(close_queue.push(2));
     close_queue.close();
@@ -66,7 +67,7 @@ int main() {
 
     std::cout << "close queue ok\n";
 
-    BoundedQueue<std::string, 2> names;
+    spsc::BoundedQueue<std::string, 2> names;
 
     assert(names.try_push("A"));
     assert(names.try_push("B"));
@@ -83,7 +84,7 @@ int main() {
 
     std::cout << "string queue ok\n";
 
-    BoundedQueue<std::string, 2> move_queue;
+    spsc::BoundedQueue<std::string, 2> move_queue;
 
     std::string original = "move-me";
     assert(move_queue.try_push(std::move(original)));

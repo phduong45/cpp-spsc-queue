@@ -6,6 +6,8 @@
 #include <mutex>
 #include <utility>
 
+namespace spsc {
+
 template <typename T, std::size_t Capacity>
 class BoundedQueue {
     static_assert(Capacity > 0, "BoundedQueue capacity must be greater than 0");
@@ -112,3 +114,5 @@ class BoundedQueue {
     std::condition_variable not_full_;
     bool closed_ = false;
 };
+
+} // namespace spsc
