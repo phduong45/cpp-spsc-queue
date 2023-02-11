@@ -49,6 +49,23 @@ class BoundedQueue {
         return true;
     }
 
+    template <typename... Args>
+    bool emplace(Args&&... args) {
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            not_full_.wait(lock, [this] { return !full() || closed_; });
+
+            if (closed_) {
+                return false;
+            }
+
+            emplace_unchecked(std::forward<Args>(args)...);
+        }
+
+        not_empty_.notify_one();
+        return true;
+    }
+
     bool try_push(T value) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (closed_ || full()) {
@@ -80,10 +97,7 @@ class BoundedQueue {
             return false;
         }
 
-        data_[head_] = T(std::forward<Args>(args)...);
-        head_ = (head_ + 1) % data_.size();
-        ++size_;
-
+        emplace_unchecked(std::forward<Args>(args)...);
         not_empty_.notify_one();
         return true;
     }
@@ -118,6 +132,13 @@ class BoundedQueue {
         tail_ = (tail_ + 1) % data_.size();
         --size_;
         return value;
+    }
+
+    template <typename... Args>
+    void emplace_unchecked(Args&&... args) {
+        data_[head_] = T(std::forward<Args>(args)...);
+        head_ = (head_ + 1) % data_.size();
+        ++size_;
     }
 
     std::array<T, Capacity> data_{};

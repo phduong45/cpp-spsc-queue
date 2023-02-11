@@ -117,5 +117,24 @@ int main() {
 
     std::cout << "emplace queue ok\n";
 
+    spsc::BoundedQueue<Job, 2> blocking_jobs;
+
+    assert(blocking_jobs.emplace(1, "load"));
+    assert(blocking_jobs.emplace(2, "store"));
+    blocking_jobs.close();
+
+    Job blocking_job;
+    assert(blocking_jobs.pop(blocking_job));
+    assert(blocking_job.id == 1);
+    assert(blocking_job.name == "load");
+
+    assert(blocking_jobs.pop(blocking_job));
+    assert(blocking_job.id == 2);
+    assert(blocking_job.name == "store");
+
+    assert(!blocking_jobs.emplace(3, "closed"));
+
+    std::cout << "blocking emplace queue ok\n";
+
     return 0;
 }
