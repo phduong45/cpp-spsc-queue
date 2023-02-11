@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <cstddef>
 #include <mutex>
+#include <optional>
 #include <utility>
 
 namespace spsc {
@@ -49,6 +50,15 @@ class BoundedQueue {
         return true;
     }
 
+    std::optional<T> pop() {
+        T value;
+        if (!pop(value)) {
+            return std::nullopt;
+        }
+
+        return value;
+    }
+
     template <typename... Args>
     bool emplace(Args&&... args) {
         {
@@ -88,6 +98,15 @@ class BoundedQueue {
         not_full_.notify_one();
 
         return true;
+    }
+
+    std::optional<T> try_pop() {
+        T value;
+        if (!try_pop(value)) {
+            return std::nullopt;
+        }
+
+        return value;
     }
 
     template <typename... Args>

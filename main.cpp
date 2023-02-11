@@ -136,5 +136,27 @@ int main() {
 
     std::cout << "blocking emplace queue ok\n";
 
+    spsc::BoundedQueue<std::string, 2> optional_queue;
+
+    assert(!optional_queue.try_pop().has_value());
+
+    assert(optional_queue.try_push("alpha"));
+    assert(optional_queue.try_push("beta"));
+
+    auto first = optional_queue.try_pop();
+    assert(first.has_value());
+    assert(*first == "alpha");
+
+    auto second = optional_queue.pop();
+    assert(second.has_value());
+    assert(*second == "beta");
+
+    optional_queue.close();
+
+    auto closed = optional_queue.pop();
+    assert(!closed.has_value());
+
+    std::cout << "optional pop queue ok\n";
+
     return 0;
 }
