@@ -6,6 +6,11 @@
 #include <thread>
 #include <utility>
 
+struct Job {
+    int id = 0;
+    std::string name;
+};
+
 int main() {
     static_assert(spsc::BoundedQueue<int, 4>::capacity() == 4);
     static_assert(spsc::BoundedQueue<std::string, 2>::capacity() == 2);
@@ -94,6 +99,23 @@ int main() {
     assert(moved_out == "move-me");
 
     std::cout << "move queue ok\n";
+
+    spsc::BoundedQueue<Job, 2> jobs;
+
+    assert(jobs.try_emplace(7, "decode"));
+    assert(jobs.try_emplace(8, "render"));
+    assert(!jobs.try_emplace(9, "upload"));
+
+    Job job;
+    assert(jobs.try_pop(job));
+    assert(job.id == 7);
+    assert(job.name == "decode");
+
+    assert(jobs.try_pop(job));
+    assert(job.id == 8);
+    assert(job.name == "render");
+
+    std::cout << "emplace queue ok\n";
 
     return 0;
 }

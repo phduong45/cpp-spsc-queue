@@ -73,6 +73,21 @@ class BoundedQueue {
         return true;
     }
 
+    template <typename... Args>
+    bool try_emplace(Args&&... args) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (closed_ || full()) {
+            return false;
+        }
+
+        data_[head_] = T(std::forward<Args>(args)...);
+        head_ = (head_ + 1) % data_.size();
+        ++size_;
+
+        not_empty_.notify_one();
+        return true;
+    }
+
     void close() {
         {
             std::lock_guard<std::mutex> lock(mutex_);
