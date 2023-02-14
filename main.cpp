@@ -1,6 +1,7 @@
 #include "bounded_queue.h"
 
 #include <cassert>
+#include <chrono>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -12,6 +13,8 @@ struct Job {
 };
 
 int main() {
+    using namespace std::chrono_literals;
+
     static_assert(spsc::BoundedQueue<int, 4>::capacity() == 4);
     static_assert(spsc::BoundedQueue<std::string, 2>::capacity() == 2);
 
@@ -157,6 +160,20 @@ int main() {
     assert(!closed.has_value());
 
     std::cout << "optional pop queue ok\n";
+
+    spsc::BoundedQueue<int, 1> timed_queue;
+
+    assert(timed_queue.push_for(1, 10ms));
+    assert(!timed_queue.push_for(2, 10ms));
+
+    auto timed_value = timed_queue.pop_for(10ms);
+    assert(timed_value.has_value());
+    assert(*timed_value == 1);
+
+    auto missing_value = timed_queue.pop_for(10ms);
+    assert(!missing_value.has_value());
+
+    std::cout << "timed queue ok\n";
 
     return 0;
 }

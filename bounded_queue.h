@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <chrono>
 #include <condition_variable>
 #include <cstddef>
 #include <mutex>
@@ -48,6 +49,44 @@ class BoundedQueue {
 
         not_full_.notify_one();
         return true;
+    }
+
+    bool push_for(T value, std::chrono::milliseconds timeout) {
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            const bool ready = not_full_.wait_for(lock, timeout, [this] {
+                return !full() || closed_;
+            });
+
+            if (!ready || closed_) {
+                return false;
+            }
+
+            push_unchecked(std::move(value));
+        }
+
+        not_empty_.notify_one();
+        return true;
+    }
+
+    std::optional<T> pop_for(std::chrono::milliseconds timeout) {
+        T value;
+
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            const bool ready = not_empty_.wait_for(lock, timeout, [this] {
+                return !empty() || closed_;
+            });
+
+            if (!ready || (empty() && closed_)) {
+                return std::nullopt;
+            }
+
+            value = pop_unchecked();
+        }
+
+        not_full_.notify_one();
+        return value;
     }
 
     std::optional<T> pop() {
