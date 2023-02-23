@@ -12,6 +12,42 @@ struct Job {
     std::string name;
 };
 
+void test_stress_order() {
+    constexpr int kCount = 10000;
+
+    spsc::BoundedQueue<int, 8> queue;
+    int sum = 0;
+    bool result = true;
+
+    std::thread producer([&] {
+        for (int value = 1; value <= kCount; ++value) {
+            assert(queue.push(value));
+        }
+        queue.close();
+    });
+
+    std::thread consumer([&] {
+        int expected = 1;
+        while (auto value = queue.pop()) {
+            if (*value != expected) {
+                result = false;
+            }
+
+            sum += *value;
+            ++expected;
+        }
+        assert(expected == kCount + 1);
+    });
+
+    producer.join();
+    consumer.join();
+
+    assert(result);
+    assert(sum == kCount * (kCount + 1) / 2);
+
+    std::cout << "stress test order ok\n";
+}
+
 int main() {
     using namespace std::chrono_literals;
 
@@ -174,6 +210,8 @@ int main() {
     assert(!missing_value.has_value());
 
     std::cout << "timed queue ok\n";
+
+    test_stress_order();
 
     return 0;
 }
