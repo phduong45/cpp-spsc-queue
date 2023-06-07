@@ -1,8 +1,10 @@
 #include "bounded_queue.h"
+#include "spsc_queue.h"
 
 #include <cassert>
 #include <chrono>
 #include <iostream>
+
 #include <string>
 #include <thread>
 #include <utility>
@@ -225,6 +227,34 @@ void test_stress_order() {
     std::cout << "stress test order ok\n";
 }
 
+void test_spsc_queue() {
+    spsc::SpscQueue<int, 4> queue;
+
+    assert(!queue.try_pop().has_value());
+
+    assert(queue.try_push(1));
+    assert(queue.try_push(2));
+    assert(queue.try_push(3));
+    assert(queue.try_push(4));
+    assert(!queue.try_push(5));
+
+    auto first = queue.try_pop();
+    assert(first.has_value());
+    assert(*first == 1);
+
+    assert(queue.try_push(5));
+
+    for (int expected = 2; expected <= 5; ++expected) {
+        auto value = queue.try_pop();
+        assert(value.has_value());
+        assert(*value == expected);
+    }
+
+    assert(!queue.try_pop().has_value());
+
+    std::cout << "spsc single-thread ok\n";
+}
+
 int main() {
     static_assert(spsc::BoundedQueue<int, 4>::capacity() == 4);
     static_assert(spsc::BoundedQueue<std::string, 2>::capacity() == 2);
@@ -239,6 +269,9 @@ int main() {
     test_optional_pop();
     test_timed_queue();
     test_stress_order();
+
+    // spsc
+    test_spsc_queue();
 
     return 0;
 }

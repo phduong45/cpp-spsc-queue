@@ -17,11 +17,27 @@ class SpscQueue {
     }
 
     bool try_push(T value) {
-        // TODO
+        if (is_full()) {
+            return false;
+        }
+
+        data_[head_] = std::move(value);
+        head_ = (head_ + 1) % data_.size();
+        ++size_;
+
+        return true;
     }
 
     std::optional<T> try_pop() {
-        // TODO
+        if (is_empty()) {
+            return std::nullopt;
+        }
+
+        T value = std::move(data_[tail_]);
+        tail_ = (tail_ + 1) % data_.size();
+        --size_;
+
+        return value;
     }
 
   private:
@@ -38,4 +54,4 @@ class SpscQueue {
     std::size_t tail_ = 0;
     std::size_t size_ = 0;
 };
-}; // namespace spsc
+} // namespace spsc
