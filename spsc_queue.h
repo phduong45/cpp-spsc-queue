@@ -22,8 +22,7 @@ class SpscQueue {
         }
 
         data_[head_] = std::move(value);
-        head_ = (head_ + 1) % data_.size();
-        ++size_;
+        head_ = next(head_);
 
         return true;
     }
@@ -34,24 +33,25 @@ class SpscQueue {
         }
 
         T value = std::move(data_[tail_]);
-        tail_ = (tail_ + 1) % data_.size();
-        --size_;
+        tail_ = next(tail_);
 
         return value;
     }
 
   private:
     bool is_empty() const {
-        return size_ == 0;
+        return head_ == tail_;
     }
 
     bool is_full() const {
-        return size_ == data_.size();
+        return next(head_) == tail_;
     }
 
+    std::size_t next(std::size_t index) const {
+        return (index + 1) % data_.size();
+    }
     std::array<T, Capacity> data_{};
     std::size_t head_ = 0;
     std::size_t tail_ = 0;
-    std::size_t size_ = 0;
 };
 } // namespace spsc

@@ -235,16 +235,15 @@ void test_spsc_queue() {
     assert(queue.try_push(1));
     assert(queue.try_push(2));
     assert(queue.try_push(3));
-    assert(queue.try_push(4));
-    assert(!queue.try_push(5));
+    assert(!queue.try_push(4));
 
     auto first = queue.try_pop();
     assert(first.has_value());
     assert(*first == 1);
 
-    assert(queue.try_push(5));
+    assert(queue.try_push(4));
 
-    for (int expected = 2; expected <= 5; ++expected) {
+    for (int expected = 2; expected <= 4; ++expected) {
         auto value = queue.try_pop();
         assert(value.has_value());
         assert(*value == expected);
@@ -252,7 +251,7 @@ void test_spsc_queue() {
 
     assert(!queue.try_pop().has_value());
 
-    std::cout << "spsc single-thread ok\n";
+    std::cout << "spsc no-size ring ok\n";
 }
 
 int main() {
