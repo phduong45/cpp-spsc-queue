@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <optional>
 #include <utility>
@@ -17,41 +18,35 @@ class SpscQueue {
     }
 
     bool try_push(T value) {
-        if (is_full()) {
+        const std::size_t head = head_.load();
+        const std::size_t tail = tail_.load();
+        if (next(head) == tail) {
             return false;
         }
 
-        data_[head_] = std::move(value);
-        head_ = next(head_);
-
+        data_[head] = std::move(value);
+        head_.store(next(head));
         return true;
     }
 
     std::optional<T> try_pop() {
-        if (is_empty()) {
+        const std::size_t head = head_.load();
+        const std::size_t tail = tail_.load();
+        if (head == tail) {
             return std::nullopt;
         }
 
-        T value = std::move(data_[tail_]);
-        tail_ = next(tail_);
-
+        T value = std::move(data_[tail]);
+        tail_.store(next(tail));
         return value;
     }
 
   private:
-    bool is_empty() const {
-        return head_ == tail_;
-    }
-
-    bool is_full() const {
-        return next(head_) == tail_;
-    }
-
     std::size_t next(std::size_t index) const {
         return (index + 1) % data_.size();
     }
     std::array<T, Capacity> data_{};
-    std::size_t head_ = 0;
-    std::size_t tail_ = 0;
+    std::atomic<std::size_t> head_{0};
+    std::atomic<std::size_t> tail_{0};
 };
 } // namespace spsc

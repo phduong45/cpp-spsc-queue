@@ -254,6 +254,39 @@ void test_spsc_queue() {
     std::cout << "spsc no-size ring ok\n";
 }
 
+void test_spsc_two_thread_smoke() {
+    constexpr int kCount = 10000;
+
+    spsc::SpscQueue<int, 64> queue;
+    int sum = 0;
+
+    std::thread producer([&] {
+        for (int value = 1; value <= kCount;) {
+            if (queue.try_push(value)) {
+                ++value;
+            }
+        }
+    });
+
+    std::thread consumer([&] {
+        int received = 0;
+        while (received < kCount) {
+            auto value = queue.try_pop();
+            if (value.has_value()) {
+                sum += *value;
+                ++received;
+            }
+        }
+    });
+
+    producer.join();
+    consumer.join();
+
+    assert(sum == kCount * (kCount + 1) / 2);
+
+    std::cout << "spsc two-thread smoke ok\n";
+}
+
 int main() {
     static_assert(spsc::BoundedQueue<int, 4>::capacity() == 4);
     static_assert(spsc::BoundedQueue<std::string, 2>::capacity() == 2);
@@ -271,6 +304,7 @@ int main() {
 
     // spsc
     test_spsc_queue();
+    test_spsc_two_thread_smoke();
 
     return 0;
 }
