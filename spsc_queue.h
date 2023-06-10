@@ -18,26 +18,26 @@ class SpscQueue {
     }
 
     bool try_push(T value) {
-        const std::size_t head = head_.load();
-        const std::size_t tail = tail_.load();
+        const std::size_t head = head_.load(std::memory_order_relaxed);
+        const std::size_t tail = tail_.load(std::memory_order_acquire);
         if (next(head) == tail) {
             return false;
         }
 
         data_[head] = std::move(value);
-        head_.store(next(head));
+        head_.store(next(head), std::memory_order_release);
         return true;
     }
 
     std::optional<T> try_pop() {
-        const std::size_t head = head_.load();
-        const std::size_t tail = tail_.load();
+        const std::size_t head = head_.load(std::memory_order_acquire);
+        const std::size_t tail = tail_.load(std::memory_order_relaxed);
         if (head == tail) {
             return std::nullopt;
         }
 
         T value = std::move(data_[tail]);
-        tail_.store(next(tail));
+        tail_.store(next(tail), std::memory_order_release);
         return value;
     }
 
