@@ -20,12 +20,12 @@ class SpscQueue {
     bool try_push(T value) {
         const std::size_t head = head_.load(std::memory_order_relaxed);
         const std::size_t tail = tail_.load(std::memory_order_acquire);
-        if (next(head) == tail) {
+        if (head - tail == Capacity) {
             return false;
         }
 
-        data_[head] = std::move(value);
-        head_.store(next(head), std::memory_order_release);
+        data_[index(head)] = std::move(value);
+        head_.store(head + 1, std::memory_order_release);
         return true;
     }
 
@@ -36,14 +36,14 @@ class SpscQueue {
             return std::nullopt;
         }
 
-        T value = std::move(data_[tail]);
-        tail_.store(next(tail), std::memory_order_release);
+        T value = std::move(data_[index(tail)]);
+        tail_.store(tail + 1, std::memory_order_release);
         return value;
     }
 
   private:
-    std::size_t next(std::size_t index) const {
-        return (index + 1) % data_.size();
+    std::size_t index(std::size_t counter) const {
+        return counter % data_.size();
     }
     std::array<T, Capacity> data_{};
     std::atomic<std::size_t> head_{0};
