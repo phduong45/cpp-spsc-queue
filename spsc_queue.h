@@ -7,6 +7,7 @@
 #include <utility>
 
 namespace spsc {
+inline constexpr std::size_t kCacheLineSize = 64;
 
 template <typename T, std::size_t Capacity>
 class SpscQueue {
@@ -51,7 +52,7 @@ class SpscQueue {
         return counter & (Capacity - 1);
     }
     std::array<T, Capacity> data_{};
-    std::atomic<std::size_t> head_{0};
-    std::atomic<std::size_t> tail_{0};
+    alignas(kCacheLineSize) std::atomic<std::size_t> head_{0};
+    alignas(kCacheLineSize) std::atomic<std::size_t> tail_{0};
 };
 } // namespace spsc
