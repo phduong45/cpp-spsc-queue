@@ -10,7 +10,12 @@ namespace spsc {
 
 template <typename T, std::size_t Capacity>
 class SpscQueue {
-    static_assert(Capacity > 0, "SpscQueue capacity must be greater than 0");
+    static constexpr bool is_power_of_two(std::size_t value) {
+        return value > 0 && (value & (value - 1)) == 0;
+    }
+
+    static_assert(is_power_of_two(Capacity),
+                  "SpscQueue capacity must be a power of two");
 
   public:
     static constexpr std::size_t capacity() {
@@ -43,7 +48,7 @@ class SpscQueue {
 
   private:
     std::size_t index(std::size_t counter) const {
-        return counter % data_.size();
+        return counter & (Capacity - 1);
     }
     std::array<T, Capacity> data_{};
     std::atomic<std::size_t> head_{0};

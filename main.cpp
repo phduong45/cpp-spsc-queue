@@ -291,6 +291,7 @@ void test_spsc_two_thread_smoke() {
 int main() {
     static_assert(spsc::BoundedQueue<int, 4>::capacity() == 4);
     static_assert(spsc::BoundedQueue<std::string, 2>::capacity() == 2);
+    static_assert(spsc::SpscQueue<int, 4>::capacity() == 4);
 
     test_basic_blocking_queue();
     test_try_api();
