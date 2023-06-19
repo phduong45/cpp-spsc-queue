@@ -4,7 +4,7 @@
 #include <cassert>
 #include <chrono>
 #include <iostream>
-
+#include <memory>
 #include <string>
 #include <thread>
 #include <utility>
@@ -288,6 +288,27 @@ void test_spsc_two_thread_smoke() {
     std::cout << "spsc two-thread smoke ok\n";
 }
 
+void test_spsc_move_only_type() {
+    spsc::SpscQueue<std::unique_ptr<int>, 4> queue;
+
+    assert(queue.try_push(std::make_unique<int>(10)));
+    assert(queue.try_push(std::make_unique<int>(20)));
+
+    auto first = queue.try_pop();
+    assert(first.has_value());
+    assert(*first != nullptr);
+    assert(**first == 10);
+
+    auto second = queue.try_pop();
+    assert(second.has_value());
+    assert(*second != nullptr);
+    assert(**second == 20);
+
+    assert(!queue.try_pop().has_value());
+
+    std::cout << "spsc move-only type ok\n";
+}
+
 int main() {
     static_assert(spsc::BoundedQueue<int, 4>::capacity() == 4);
     static_assert(spsc::BoundedQueue<std::string, 2>::capacity() == 2);
@@ -308,6 +329,7 @@ int main() {
     // spsc
     test_spsc_queue();
     test_spsc_two_thread_smoke();
+    test_spsc_move_only_type();
 
     return 0;
 }
