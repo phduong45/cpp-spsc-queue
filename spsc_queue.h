@@ -3,6 +3,7 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <new>
 #include <optional>
 #include <utility>
 
@@ -23,6 +24,11 @@ class SpscQueue {
         return Capacity;
     }
 
+    T* slot(std::size_t counter) {
+        auto offset = index(counter) * sizeof(T);
+        return std::launder(reinterpret_cast<T*>(storage_.data() + offset));
+    }
+
     bool try_push(T value) {
         const std::size_t head = head_.load(std::memory_order_relaxed);
         const std::size_t tail = tail_.load(std::memory_order_acquire);
@@ -30,7 +36,7 @@ class SpscQueue {
             return false;
         }
 
-        data_[index(head)] = std::move(value);
+        ::new (static_cast<void*>(slot(head))) T(std::move(value));
         head_.store(head + 1, std::memory_order_release);
         return true;
     }
@@ -42,7 +48,10 @@ class SpscQueue {
             return std::nullopt;
         }
 
-        T value = std::move(data_[index(tail)]);
+        T* ptr = slot(tail);
+        T value = std::move(*ptr);
+        ptr->~T();
+
         tail_.store(tail + 1, std::memory_order_release);
         return value;
     }
@@ -51,7 +60,7 @@ class SpscQueue {
     std::size_t index(std::size_t counter) const {
         return counter & (Capacity - 1);
     }
-    std::array<T, Capacity> data_{};
+    alignas(T) std::array<std::byte, sizeof(T) * Capacity> storage_{};
     alignas(kCacheLineSize) std::atomic<std::size_t> head_{0};
     alignas(kCacheLineSize) std::atomic<std::size_t> tail_{0};
 };
