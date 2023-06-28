@@ -24,11 +24,6 @@ class SpscQueue {
         return Capacity;
     }
 
-    T* slot(std::size_t counter) {
-        auto offset = index(counter) * sizeof(T);
-        return std::launder(reinterpret_cast<T*>(storage_.data() + offset));
-    }
-
     bool try_push(T value) {
         const std::size_t head = head_.load(std::memory_order_relaxed);
         const std::size_t tail = tail_.load(std::memory_order_acquire);
@@ -60,6 +55,12 @@ class SpscQueue {
     std::size_t index(std::size_t counter) const {
         return counter & (Capacity - 1);
     }
+
+    T* slot(std::size_t counter) {
+        auto offset = index(counter) * sizeof(T);
+        return std::launder(reinterpret_cast<T*>(storage_.data() + offset));
+    }
+
     alignas(T) std::array<std::byte, sizeof(T) * Capacity> storage_{};
     alignas(kCacheLineSize) std::atomic<std::size_t> head_{0};
     alignas(kCacheLineSize) std::atomic<std::size_t> tail_{0};
