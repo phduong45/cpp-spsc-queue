@@ -20,6 +20,16 @@ class SpscQueue {
                   "SpscQueue capacity must be a power of two");
 
   public:
+    ~SpscQueue() {
+        const std::size_t head = head_.load(std::memory_order_relaxed);
+        std::size_t tail = tail_.load(std::memory_order_relaxed);
+
+        while (tail != head) {
+            slot(tail)->~T();
+            ++tail;
+        }
+    }
+
     static constexpr std::size_t capacity() {
         return Capacity;
     }

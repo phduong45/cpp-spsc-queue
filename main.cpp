@@ -14,6 +14,34 @@ struct Job {
     std::string name;
 };
 
+struct Counted {
+    static inline int destroyed = 0;
+
+    int value = 0;
+
+    explicit Counted(int v) : value(v) {
+    }
+
+    Counted(Counted&& other) noexcept : value(other.value) {
+        other.value = 0;
+    }
+
+    Counted& operator=(Counted&& other) noexcept {
+        value = other.value;
+        other.value = 0;
+        return *this;
+    }
+
+    Counted(const Counted&) = delete;
+    Counted& operator=(const Counted&) = delete;
+
+    ~Counted() {
+        if (value != 0) {
+            ++destroyed;
+        }
+    }
+};
+
 void test_basic_blocking_queue() {
     spsc::BoundedQueue<int, 4> queue;
     int sum = 0;
@@ -309,6 +337,20 @@ void test_spsc_move_only_type() {
     std::cout << "spsc move-only type ok\n";
 }
 
+void test_spsc_destructor_cleans_live_items() {
+    Counted::destroyed = 0;
+
+    {
+        spsc::SpscQueue<Counted, 4> queue;
+        assert(queue.try_push(Counted{1}));
+        assert(queue.try_push(Counted{2}));
+    }
+
+    assert(Counted::destroyed == 2);
+
+    std::cout << "spsc destructor cleanup ok\n";
+}
+
 int main() {
     static_assert(spsc::BoundedQueue<int, 4>::capacity() == 4);
     static_assert(spsc::BoundedQueue<std::string, 2>::capacity() == 2);
@@ -330,6 +372,7 @@ int main() {
     test_spsc_queue();
     test_spsc_two_thread_smoke();
     test_spsc_move_only_type();
+    test_spsc_destructor_cleans_live_items();
 
     return 0;
 }
