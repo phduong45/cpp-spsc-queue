@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <utility>
 
 struct Job {
@@ -356,6 +357,10 @@ int main() {
     static_assert(spsc::BoundedQueue<std::string, 2>::capacity() == 2);
     static_assert(spsc::SpscQueue<int, 4>::capacity() == 4);
     static_assert(alignof(spsc::SpscQueue<int, 4>) >= spsc::kCacheLineSize);
+    static_assert(!std::is_copy_constructible_v<spsc::SpscQueue<int, 4>>);
+    static_assert(!std::is_copy_assignable_v<spsc::SpscQueue<int, 4>>);
+    static_assert(!std::is_move_constructible_v<spsc::SpscQueue<int, 4>>);
+    static_assert(!std::is_move_assignable_v<spsc::SpscQueue<int, 4>>);
 
     test_basic_blocking_queue();
     test_try_api();

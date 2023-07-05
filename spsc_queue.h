@@ -20,6 +20,14 @@ class SpscQueue {
                   "SpscQueue capacity must be a power of two");
 
   public:
+    SpscQueue() = default;
+
+    SpscQueue(const SpscQueue&) = delete;
+    SpscQueue& operator=(const SpscQueue&) = delete;
+
+    SpscQueue(SpscQueue&&) = delete;
+    SpscQueue& operator=(SpscQueue&&) = delete;
+
     ~SpscQueue() {
         const std::size_t head = head_.load(std::memory_order_relaxed);
         std::size_t tail = tail_.load(std::memory_order_relaxed);
