@@ -42,16 +42,22 @@ class SpscQueue {
         return Capacity;
     }
 
-    bool try_push(T value) {
+    template <typename... Args>
+    bool try_emplace(Args&&... args) {
         const std::size_t head = head_.load(std::memory_order_relaxed);
         const std::size_t tail = tail_.load(std::memory_order_acquire);
+
         if (head - tail == Capacity) {
             return false;
         }
 
-        ::new (static_cast<void*>(slot(head))) T(std::move(value));
+        ::new (static_cast<void*>(slot(head))) T(std::forward<Args>(args)...);
         head_.store(head + 1, std::memory_order_release);
         return true;
+    }
+
+    bool try_push(T value) {
+        return try_emplace(std::move(value));
     }
 
     std::optional<T> try_pop() {

@@ -352,6 +352,26 @@ void test_spsc_destructor_cleans_live_items() {
     std::cout << "spsc destructor cleanup ok\n";
 }
 
+void test_spsc_try_emplace() {
+    spsc::SpscQueue<Job, 2> queue;
+
+    assert(queue.try_emplace(1, "parse"));
+    assert(queue.try_emplace(2, "match"));
+    assert(!queue.try_emplace(3, "full"));
+
+    auto first = queue.try_pop();
+    assert(first.has_value());
+    assert(first->id == 1);
+    assert(first->name == "parse");
+
+    auto second = queue.try_pop();
+    assert(second.has_value());
+    assert(second->id == 2);
+    assert(second->name == "match");
+
+    std::cout << "spsc try emplace ok\n";
+}
+
 int main() {
     static_assert(spsc::BoundedQueue<int, 4>::capacity() == 4);
     static_assert(spsc::BoundedQueue<std::string, 2>::capacity() == 2);
@@ -378,6 +398,7 @@ int main() {
     test_spsc_two_thread_smoke();
     test_spsc_move_only_type();
     test_spsc_destructor_cleans_live_items();
+    test_spsc_try_emplace();
 
     return 0;
 }
