@@ -10,6 +10,7 @@
 namespace spsc {
 inline constexpr std::size_t kCacheLineSize = 64;
 
+// Exactly one producer and one consumer.
 template <typename T, std::size_t Capacity>
 class SpscQueue {
     static constexpr bool is_power_of_two(std::size_t value) {
@@ -86,6 +87,7 @@ class SpscQueue {
     }
 
     alignas(T) std::array<std::byte, sizeof(T) * Capacity> storage_{};
+    // Producer owns head_, consumer owns tail_.
     alignas(kCacheLineSize) std::atomic<std::size_t> head_{0};
     alignas(kCacheLineSize) std::atomic<std::size_t> tail_{0};
 };
